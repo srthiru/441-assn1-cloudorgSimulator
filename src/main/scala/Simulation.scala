@@ -1,5 +1,5 @@
 import HelperUtils.{CreateLogger, ObtainConfigReference}
-import Simulations.BasicCloudSimPlusExample
+import Simulations.{BasicCloudSimPlusExample, CloudOrgSim} //CloudletSchedulerSpaceSharedExample
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
@@ -8,7 +8,8 @@ object Simulation:
 
   @main def runSimulation =
     logger.info("Constructing a cloud model...")
-    BasicCloudSimPlusExample.Start()
+    CloudOrgSim.runSim("simulation1")
+//    CloudletSchedulerSpaceSharedExample.Start()
     logger.info("Finished cloud simulation...")
 
 class Simulation
