@@ -13,18 +13,14 @@ import org.cloudbus.cloudsim.schedulers.cloudlet.{CloudletSchedulerAbstract, Clo
 import org.cloudbus.cloudsim.schedulers.vm.{VmSchedulerAbstract, VmSchedulerSpaceShared, VmSchedulerTimeShared}
 import org.cloudbus.cloudsim.utilizationmodels.{UtilizationModel, UtilizationModelDynamic, UtilizationModelFull, UtilizationModelStochastic}
 import org.cloudbus.cloudsim.vms.{Vm, VmCost, VmSimple}
-import org.cloudsimplus.builders.tables.{CloudletsTableBuilder, Table, TableBuilderAbstract, TableColumn}
+import org.cloudsimplus.builders.tables.{CloudletsTableBuilder, Table, TableBuilderAbstract, TableColumn, TextTableColumn}
 import org.cloudsimplus.autoscaling.{HorizontalVmScaling, HorizontalVmScalingSimple}
-
 import com.typesafe.config.{Config, ConfigFactory}
 
 import java.text.NumberFormat
 import java.util.Locale
-import java.util.function.Supplier
-
 import collection.JavaConverters.*
-
-import HelperUtils.{CreateLogger, CustomCloudletsTable, ObtainConfigReference, VmCreator}
+import HelperUtils.{CreateLogger, ObtainConfigReference, VmCreator}
 
 
 class CloudOrgSim
@@ -41,7 +37,7 @@ object CloudOrgSim:
     // Get Config reference for the simulation
     val simConfig = ConfigFactory.load(configName).getConfig("cloudSimulator."+simName)
     logger.info("Loaded config for " + simName)
-    
+
     val broker0 = new DatacenterBrokerSimple(cloudsim)
 
     val dcConfig = simConfig.getConfig("datacenters")
@@ -61,17 +57,17 @@ object CloudOrgSim:
     cloudsim.start()
 
     val finishedCloudlets = broker0.getCloudletFinishedList()
-//    val costs = getCloudletCost(finishedCloudlets)
-//    val costs = finishedCloudlets.map(_.getTotalCost)
 
-    val cloudletTable = new CustomCloudletsTable(finishedCloudlets)
-    // Todo: Try to add a new column to Cloudlet Table builder directly instead of creating a new class
-    // Problem: Cannot access protected method addColumn from the base _Table_ class
-    //    val col:TableColumn = cloudletTable.addColumn("StartTime", "").setFormat()
-    //    cloudletTable.addColumn(new TableColumn(), )
-    //    logger.info("Total cost: ", costs)
+    val trialTable = new CloudletsTableBuilder(finishedCloudlets)
+                            .addColumn(new TextTableColumn("Actual CPU Time", "Usage"), cloudlet => "%.2f".format(cloudlet.getActualCpuTime))
+                            .addColumn(new TextTableColumn("CloudletCost", "CPU"), cloudlet => "$ %.2f".format(cloudlet.getActualCpuTime  * cloudlet.getCostPerSec))
+                            .addColumn(new TextTableColumn("CloudletCost", "BW"), cloudlet => "$ %.2f".format(cloudlet.getAccumulatedBwCost))
+                            .addColumn(new TextTableColumn("CloudletCost", "Total"), cloudlet => "$ %.2f".format(cloudlet.getTotalCost))
+                            .addColumn(new TextTableColumn("Utilization %", "CPU"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfCpu*100))
+                            .addColumn(new TextTableColumn("Utilization %", "RAM"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfRam*100))
+                            .addColumn(new TextTableColumn("Utilization %", "BW"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfBw*100))
 
-    cloudletTable.build()
+    trialTable.build()
 
     val cloudletTotalCost = cloudletList.map(i => i.getTotalCost()).sum
     logger.info("Total Cloudlet Cost: " + currencyFormat.format(cloudletTotalCost))
@@ -131,7 +127,9 @@ object CloudOrgSim:
       .setUtilizationModel(utilizationModel.asInstanceOf[UtilizationModel])
 
   def getUtilModel(utilModel: String): UtilizationModel ={
-    return if utilModel == "stochastic" then new UtilizationModelStochastic() else if utilModel == "dynamic" then new UtilizationModelDynamic() else UtilizationModelFull()
+    return if utilModel == "stochastic" then new UtilizationModelStochastic()
+            else if utilModel == "dynamic" then new UtilizationModelDynamic().setUtilizationUpdateFunction(um => um.getUtilization() + um.getTimeSpan()*0.1)
+            else UtilizationModelFull()
   }
 
   def getCloudletScheduler(cloudletScheduler: String): CloudletSchedulerAbstract = {
