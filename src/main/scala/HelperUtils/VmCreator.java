@@ -62,7 +62,7 @@ public class VmCreator {
 
         final Vm vm =  new VmSimple(id, vmConf.getInt("mipsCapacity"), vmConf.getInt("PEs"))
                             .setRam(vmConf.getInt("RAMInMBs")).setBw(vmConf.getInt("BandwidthInMBps")).setSize(vmConf.getInt("StorageInMBs"))
-                            .setCloudletScheduler(scheduler);
+                            .setCloudletScheduler(scheduler).setTimeZone(vmConf.getDouble("timezone"));
 
         logger.info("Created VM " + vm.getId() + " in datacenter " + vm.getHost().getDatacenter().getName());
 

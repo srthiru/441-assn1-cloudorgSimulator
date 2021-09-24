@@ -1,7 +1,7 @@
 package Simulations
 
 import org.cloudbus.cloudsim.allocationpolicies.{VmAllocationPolicyAbstract, VmAllocationPolicyBestFit, VmAllocationPolicyFirstFit, VmAllocationPolicyRandom, VmAllocationPolicyRoundRobin, VmAllocationPolicySimple}
-import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple
+import org.cloudbus.cloudsim.brokers.{DatacenterBrokerAbstract, DatacenterBrokerBestFit, DatacenterBrokerFirstFit, DatacenterBrokerSimple}
 import org.cloudbus.cloudsim.cloudlets.{Cloudlet, CloudletSimple}
 import org.cloudbus.cloudsim.core.CloudSim
 import org.cloudbus.cloudsim.datacenters.{Datacenter, DatacenterSimple}
@@ -35,30 +35,34 @@ object CloudOrgSim:
   def runSim(simName: String, configName: String = "application.conf") =
 
     // Get Config reference for the simulation
-    val simConfig = ConfigFactory.load(configName).getConfig("cloudSimulator."+simName)
+    val simConf = ConfigFactory.load(configName).getConfig("cloudSimulator."+simName)
     logger.info("Loaded config for " + simName)
 
-    val broker0 = new DatacenterBrokerSimple(cloudsim)
-
-    val dcConfig = simConfig.getConfig("datacenters")
+    val dcConfig = simConf.getConfig("datacenters")
     val dataCenters = (1 to dcConfig.getInt("nDcs")).map(i => createDatacenter(dcConfig.getConfig("datacenter" + i), cloudsim))
 
-    val cloudletConf = simConfig.getConfig("cloudlet")
-    val cloudletList = (1 to simConfig.getInt("nCloudlets")).map( i => createCloudlet(i, cloudletConf))
+    val nBrokers = simConf.getInt("brokers.nBrokers")
+    val brokers = (1 to nBrokers).map(i => createBroker(simConf.getConfig("brokers.broker" + i)))
 
-    val vmConf = simConfig.getConfig("vm")
+    val cloudletConf = simConf.getConfig("cloudlet")
+    val cloudletList = (1 to simConf.getInt("nCloudlets")).map( i => createCloudlet(i, cloudletConf))
+
+    val vmConf = simConf.getConfig("vm")
     val vmCreator = new VmCreator(vmConf)
-    val vmList = (1 to simConfig.getInt("nVms")).map (i => vmCreator.createScalableVm())
+    val vmList = (1 to simConf.getInt("nVms")).map (i => vmCreator.createScalableVm())
 
-    broker0.submitVmList(vmList.asJava)
-    broker0.submitCloudletList(cloudletList.asJava)
+    brokers(0).submitVmList(vmList.asJava)
+    brokers(0).submitCloudletList(cloudletList.asJava)
+
+//    (0 to nBrokers-1).map(i => brokers(i).submitVmList(vmList.asJava))
+//    (0 to nBrokers-1).map(i => brokers(i).submitCloudletList(cloudletList.asJava))
 
     logger.info("Starting cloud simulation...")
     cloudsim.start()
 
-    val finishedCloudlets = broker0.getCloudletFinishedList()
+    val finishedCloudlets = (0 to nBrokers-1).map(i => brokers(i).getCloudletFinishedList().asScala).flatten
 
-    val trialTable = new CloudletsTableBuilder(finishedCloudlets)
+    val cloudletTable = new CloudletsTableBuilder(finishedCloudlets.asJava)
                             .addColumn(new TextTableColumn("Actual CPU Time", "Usage"), cloudlet => "%.2f".format(cloudlet.getActualCpuTime))
                             .addColumn(new TextTableColumn("CloudletCost", "CPU"), cloudlet => "$ %.2f".format(cloudlet.getActualCpuTime  * cloudlet.getCostPerSec))
                             .addColumn(new TextTableColumn("CloudletCost", "BW"), cloudlet => "$ %.2f".format(cloudlet.getAccumulatedBwCost))
@@ -66,8 +70,9 @@ object CloudOrgSim:
                             .addColumn(new TextTableColumn("Utilization %", "CPU"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfCpu*100))
                             .addColumn(new TextTableColumn("Utilization %", "RAM"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfRam*100))
                             .addColumn(new TextTableColumn("Utilization %", "BW"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfBw*100))
+                            .addColumn(new TextTableColumn("Utilization %", "BW"), cloudlet => "%.2f%%".format(cloudlet.getUtilizationOfBw*100))
 
-    trialTable.build()
+    cloudletTable.build()
 
     val cloudletTotalCost = cloudletList.map(i => i.getTotalCost()).sum
     logger.info("Total Cloudlet Cost: " + currencyFormat.format(cloudletTotalCost))
@@ -77,14 +82,25 @@ object CloudOrgSim:
 
     logger.info("Overall time taken for the execution of the cloudlets is: " + cloudsim.clockStr() + " secs")
 
+  def createBroker(brokerConf: Config): DatacenterBrokerAbstract =
+    val brokerType = brokerConf.getString("type")
+    val broker = if brokerType == "firstfit" then new DatacenterBrokerFirstFit(cloudsim) else if brokerType == "bestfit" then new DatacenterBrokerBestFit(cloudsim) else new DatacenterBrokerSimple(cloudsim)
+
+    val brokerMatchesTimezone = if brokerConf.hasPath("matchTimezone") then brokerConf.getString("matchTimezone") else "no"
+    if brokerMatchesTimezone == "yes" then broker.setSelectClosestDatacenter(true) else broker.setSelectClosestDatacenter(false)
+
+    broker
+
   def createDatacenter(dcConfig: Config, cloudsim: CloudSim): Datacenter =
     val nHosts = dcConfig.getInt("nHosts")
     logger.info("Data center config: " + dcConfig)
     val hostList = (1 to dcConfig.getInt("nHosts")).map (i => createHosts(dcConfig.getConfig("host")))
     val dc = new DatacenterSimple(cloudsim, hostList.toList.asJava)
 
-    val vmAllocationPolicy = if dcConfig.hasPath("vmAllocationPolicy") then getVmAllocationPolicy(dcConfig.getString("vmAllocationPolicy")) else new VmAllocationPolicySimple()
+    dc.setName(dcConfig.getString("name"))
+    dc.setTimeZone(dcConfig.getDouble("timezone"))
 
+    val vmAllocationPolicy = if dcConfig.hasPath("vmAllocationPolicy") then getVmAllocationPolicy(dcConfig.getString("vmAllocationPolicy")) else new VmAllocationPolicySimple()
     dc.setVmAllocationPolicy(vmAllocationPolicy)
 
     dc.getCharacteristics()
@@ -127,65 +143,24 @@ object CloudOrgSim:
       .setUtilizationModel(utilizationModel.asInstanceOf[UtilizationModel])
 
   def getUtilModel(utilModel: String): UtilizationModel ={
-    return if utilModel == "stochastic" then new UtilizationModelStochastic()
-            else if utilModel == "dynamic" then new UtilizationModelDynamic().setUtilizationUpdateFunction(um => um.getUtilization() + um.getTimeSpan()*0.1)
-            else UtilizationModelFull()
+     if utilModel == "stochastic" then new UtilizationModelStochastic()
+        else if utilModel == "dynamic" then new UtilizationModelDynamic().setUtilizationUpdateFunction(um => um.getUtilization() + um.getTimeSpan()*0.1)
+        else UtilizationModelFull()
   }
 
   def getCloudletScheduler(cloudletScheduler: String): CloudletSchedulerAbstract = {
-    return if cloudletScheduler == "time" then new CloudletSchedulerTimeShared() else if cloudletScheduler == "space" then new CloudletSchedulerSpaceShared() else new CloudletSchedulerCompletelyFair()
+    if cloudletScheduler == "time" then new CloudletSchedulerTimeShared() else if cloudletScheduler == "space" then new CloudletSchedulerSpaceShared() else new CloudletSchedulerCompletelyFair()
   }
 
   def getVmScheduler(vmScheduler: String): VmSchedulerAbstract = {
-    return if vmScheduler == "time" then new VmSchedulerTimeShared() else new VmSchedulerSpaceShared()
+    if vmScheduler == "time" then new VmSchedulerTimeShared() else new VmSchedulerSpaceShared()
   }
 
   def getVmAllocationPolicy(vmAllocationPolicy: String): VmAllocationPolicyAbstract = {
     return (if vmAllocationPolicy == "round" then new VmAllocationPolicyRoundRobin()
-            else if vmAllocationPolicy == "random" then new VmAllocationPolicyRandom(createContinuousDistribution())
             else if vmAllocationPolicy == "best" then new VmAllocationPolicyBestFit()
             else if vmAllocationPolicy == "first" then new VmAllocationPolicyFirstFit()
             else new VmAllocationPolicySimple())
-  }
-
-  def createContinuousDistribution(): ContinuousDistribution ={
-    new ContinuousDistribution {
-      override def probability(x: Double): Double = ???
-
-      override def density(x: Double): Double = ???
-
-      override def cumulativeProbability(x: Double): Double = ???
-
-      override def cumulativeProbability(x0: Double, x1: Double): Double = ???
-
-      override def inverseCumulativeProbability(p: Double): Double = ???
-
-      override def getNumericalMean: Double = ???
-
-      override def getNumericalVariance: Double = ???
-
-      override def getSupportLowerBound: Double = ???
-
-      override def getSupportUpperBound: Double = ???
-
-      override def isSupportLowerBoundInclusive: Boolean = ???
-
-      override def isSupportUpperBoundInclusive: Boolean = ???
-
-      override def isSupportConnected: Boolean = ???
-
-      override def reseedRandomGenerator(seed: Long): Unit = ???
-
-      override def sample(sampleSize: Int): Array[Double] = ???
-
-      override def originalSample(): Double = ???
-
-      override def getSeed: Long = ???
-
-      override def isApplyAntitheticVariates: Boolean = ???
-
-      override def setApplyAntitheticVariates(applyAntitheticVariates: Boolean): StatisticalDistribution = ???
-    }
   }
 
   def showVmCosts(vmList: IndexedSeq[Vm]): Unit =
