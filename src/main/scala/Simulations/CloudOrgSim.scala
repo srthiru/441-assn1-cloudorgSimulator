@@ -1,11 +1,5 @@
 package Simulations
 
-import HelperUtils.{CreateLogger, CustomCloudletsTable, ObtainConfigReference}
-
-import java.text.NumberFormat
-import java.util.Locale
-//import Simulations.CloudletSchedulerSpaceSharedExample.{CLOUDLET_LENGTH, CLOUDLET_PES, VM_PES}
-import com.typesafe.config.{Config, ConfigFactory}
 import org.cloudbus.cloudsim.allocationpolicies.{VmAllocationPolicyAbstract, VmAllocationPolicyBestFit, VmAllocationPolicyFirstFit, VmAllocationPolicyRandom, VmAllocationPolicyRoundRobin, VmAllocationPolicySimple}
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple
 import org.cloudbus.cloudsim.cloudlets.{Cloudlet, CloudletSimple}
@@ -20,8 +14,18 @@ import org.cloudbus.cloudsim.schedulers.vm.{VmSchedulerAbstract, VmSchedulerSpac
 import org.cloudbus.cloudsim.utilizationmodels.{UtilizationModel, UtilizationModelDynamic, UtilizationModelFull, UtilizationModelStochastic}
 import org.cloudbus.cloudsim.vms.{Vm, VmCost, VmSimple}
 import org.cloudsimplus.builders.tables.{CloudletsTableBuilder, Table, TableBuilderAbstract, TableColumn}
+import org.cloudsimplus.autoscaling.{HorizontalVmScaling, HorizontalVmScalingSimple}
+
+import com.typesafe.config.{Config, ConfigFactory}
+
+import java.text.NumberFormat
+import java.util.Locale
+import java.util.function.Supplier
 
 import collection.JavaConverters.*
+
+import HelperUtils.{CreateLogger, CustomCloudletsTable, ObtainConfigReference, VmCreator}
+
 
 class CloudOrgSim
 
@@ -30,17 +34,15 @@ object CloudOrgSim:
   // Creating logger instance
   val logger = CreateLogger(classOf[CloudOrgSim])
   val cloudsim = new CloudSim(0.05)
-
-  val USE_HORIZONTAL_VM_SCALING = true
   val currencyFormat: NumberFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
-
-  def runSim(simName: String) =
-    val broker0 = new DatacenterBrokerSimple(cloudsim)
+  def runSim(simName: String, configName: String = "application.conf") =
 
     // Get Config reference for the simulation
-    val simConfig = ConfigFactory.load().getConfig("cloudSimulator."+simName)
+    val simConfig = ConfigFactory.load(configName).getConfig("cloudSimulator."+simName)
     logger.info("Loaded config for " + simName)
+    
+    val broker0 = new DatacenterBrokerSimple(cloudsim)
 
     val dcConfig = simConfig.getConfig("datacenters")
     val dataCenters = (1 to dcConfig.getInt("nDcs")).map(i => createDatacenter(dcConfig.getConfig("datacenter" + i), cloudsim))
@@ -49,7 +51,8 @@ object CloudOrgSim:
     val cloudletList = (1 to simConfig.getInt("nCloudlets")).map( i => createCloudlet(i, cloudletConf))
 
     val vmConf = simConfig.getConfig("vm")
-    val vmList = (1 to simConfig.getInt("nVms")).map (i => createVM(i, vmConf))
+    val vmCreator = new VmCreator(vmConf)
+    val vmList = (1 to simConfig.getInt("nVms")).map (i => vmCreator.createScalableVm())
 
     broker0.submitVmList(vmList.asJava)
     broker0.submitCloudletList(cloudletList.asJava)
@@ -119,19 +122,9 @@ object CloudOrgSim:
 
     host
 
-  def createVM(i: Int, vmConf: Config): Vm =
-
-    val cloudletScheduler = if vmConf.hasPath("cloudletScheduler") then getCloudletScheduler(vmConf.getString("cloudletScheduler")) else new CloudletSchedulerSpaceShared()
-
-    new VmSimple(i, vmConf.getInt("mipsCapacity"), vmConf.getInt("PEs"))
-      .setRam(vmConf.getInt("RAMInMBs"))
-      .setBw(vmConf.getInt("BandwidthInMBps"))
-      .setSize(vmConf.getInt("StorageInMBs"))
-      .setCloudletScheduler(cloudletScheduler)
-
   def createCloudlet(i: Int, cloudletConf: Config): Cloudlet =
 
-    val utilizationModel = if cloudletConf.hasPath("cloudletUtilModel") then getUtilModel(cloudletConf.getString("scheduler")) else new UtilizationModelFull()
+    val utilizationModel = if cloudletConf.hasPath("cloudletUtilModel") then getUtilModel(cloudletConf.getString("cloudletUtilModel")) else new UtilizationModelFull()
 
     new CloudletSimple(i, cloudletConf.getInt("length"), cloudletConf.getInt("PEs"))
       .setSizes(cloudletConf.getInt("sizes"))

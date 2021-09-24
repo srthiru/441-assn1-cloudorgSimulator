@@ -8,7 +8,7 @@ object Simulation:
 
   @main def runSimulation =
     logger.info("Constructing a cloud model...")
-    CloudOrgSim.runSim("simulation1")
+    CloudOrgSim.runSim("simulation1", "application.conf")
 //    CloudletSchedulerSpaceSharedExample.Start()
     logger.info("Finished cloud simulation...")
 
