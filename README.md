@@ -24,7 +24,11 @@ A datacenter contains host machines which are physical machines that are used to
 allows us to specify the configurations of these host machines such as - mipsCapacity, PEs, RAM, Storage and Bandwidth.
 
 Apart from these physical entities, we also have _Virtual machines_ that gets created and allocated within these physical host machines and _Cloudlets_ that
-represent the task that needs to be executed on the cloud infrastructure.
+represent the task that needs to be executed on the cloud infrastructure. We can also modify the various scheduling and allocation policies of the host machines 
+and virtual machines that control how VMs get allocated and scheduled within the host machines and how Cloudlets get executed within the VMs respectively. 
+
+The framework also allows us to specify the cost components of all these resources that can be used to understand how to best utilize the cloud resources to execute
+different tasks and what are the different allocation and scheduling policies for different scenarios.
 
 
 
@@ -42,11 +46,12 @@ upon execution
 
 The simulation that comes with the repo contains the following configuration:
 
-* There are three datacenters each belonging to different timezones
-  * Each datacenter contains 4 Hosts with their resources available specified in the configuration (PEs, RAM, Storage, Mips, BW etc.)
+* There are **three datacenters** each belonging to different timezones
+  * Each datacenter contains **4 Hosts** with their resources available specified in the configuration (PEs, RAM, Storage, Mips, BW etc.)
   * VM Allocation and VM Scheduling policies can be configured
-* There are 4 VMs. Timezone and scheduling policy of the VMs can be configured
-* There are 40 Cloudlets that are submitted to the broker (creating and assigning VMs to Hosts and Cloudlets to Vms on behalf of the customer)
+  * The cost of utilizing all these physical resources can be configured as well
+* There are **4 VMs**. Timezone and scheduling policy of the VMs can be configured
+* There are **40 Cloudlets** that are submitted to the broker (creating and assigning VMs to Hosts and Cloudlets to Vms on behalf of the customer)
   * The cloudlet resource requirements and utilization model can be specified in the configuration
   * The broker can also be configured to be location aware (i.e. assign VMs to the closest datacenter host based on timezone)
 

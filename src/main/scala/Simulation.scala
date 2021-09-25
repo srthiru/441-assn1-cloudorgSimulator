@@ -8,7 +8,8 @@ object Simulation:
 
   @main def runSimulation =
     logger.info("Constructing a cloud model...")
-    CloudOrgSim.runSim("simulation1", "application.conf")
+    val conf = ConfigFactory.load().getConfig("cloudSimulator")
+    (1 to conf.getInt("nSimulations")).map(i => CloudOrgSim.runSim("simulation"+1, "application.conf"))
 //    CloudletSchedulerSpaceSharedExample.Start()
     logger.info("Finished cloud simulation...")
 

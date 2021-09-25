@@ -2,6 +2,7 @@ package HelperUtils;
 
 import Simulations.CloudOrgSim$;
 import com.typesafe.config.Config;
+import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerAbstract;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerCompletelyFair;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
@@ -15,6 +16,26 @@ import org.slf4j.LoggerFactory;
 
 import java.util.function.Predicate;
 
+/**
+ * <p>
+ * An extension of {@link HorizontalVmScaling} implementation from the Cloudsimplus example
+ * that allows defining the condition to identify an overloaded VM, based on any desired criteria, such as
+ * current RAM, CPU and/or Bandwidth utilization.
+ * A {@link DatacenterBroker} monitors the VMs that have
+ * an HorizontalVmScaling object in order to create or destroy VMs on demand.
+ * </p>
+ *
+ * <br>
+ * <p>The overload condition has to be defined
+ * by providing a {@link Predicate} using the {@link #setOverloadPredicate(Predicate)} method.
+ * Check the {@link HorizontalVmScaling} documentation for details on how to enable horizontal down scaling
+ * using the {@link DatacenterBroker}.
+ * </p>
+ *
+ * @author Manoel Campos da Silva Filho
+ * @since CloudSim Plus 1.0
+ * @see HorizontalVmScaling
+ */
 public class VmCreator {
 
     // Creating logger instance
