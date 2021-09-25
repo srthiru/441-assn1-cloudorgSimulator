@@ -89,8 +89,12 @@ public class VmCreator {
      * @return true if the VM is overloaded, false otherwise
      * @see #createHorizontalVmScaling(Vm)
      */
-    private boolean isVmOverloaded(final Vm vm) {
+    private boolean isVmCpuOverloaded(final Vm vm) {
         return vm.getCpuPercentUtilization() > 0.7;
+    }
+
+    private boolean isVmRamOverloaded(final Vm vm) {
+        return vm.getRam().getPercentUtilization() > 0.7;
     }
 
     /**
@@ -101,9 +105,10 @@ public class VmCreator {
      */
     private void createHorizontalVmScaling(final Vm vm){
         final HorizontalVmScaling horizontalScaling = new HorizontalVmScalingSimple();
+
         horizontalScaling
                 .setVmSupplier(this::createVm)
-                .setOverloadPredicate(this::isVmOverloaded);
+                .setOverloadPredicate(this::isVmRamOverloaded);
         vm.setHorizontalScaling(horizontalScaling);
     }
 
