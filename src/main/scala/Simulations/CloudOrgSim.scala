@@ -115,9 +115,11 @@ object CloudOrgSim:
    * @param cloudsim simulation object to which the broker is to be added
    */
   def createBroker(brokerConf: Config, cloudsim: CloudSim): DatacenterBrokerAbstract =
+    // Create broker instance based on the type specified in the config
     val brokerType = brokerConf.getString("type")
     val broker = if brokerType == "firstfit" then new DatacenterBrokerFirstFit(cloudsim) else if brokerType == "bestfit" then new DatacenterBrokerBestFit(cloudsim) else new DatacenterBrokerSimple(cloudsim)
 
+    // If time zone matching is requested, add parameter to match VMs to the closest datacenter by timezone
     val brokerMatchesTimezone = if brokerConf.hasPath("matchTimezone") then brokerConf.getString("matchTimezone") else "no"
     if brokerMatchesTimezone == "yes" then broker.setSelectClosestDatacenter(true) else broker.setSelectClosestDatacenter(false)
 
@@ -131,23 +133,29 @@ object CloudOrgSim:
    */
   def createDatacenter(dcConfig: Config, cloudsim: CloudSim): Datacenter =
     val nHosts = dcConfig.getInt("nHosts")
-    logger.info("Data center config: " + dcConfig)
+    logger.trace("Data center config: " + dcConfig)
+    // Create list of hosts using config parameters
     val hostList = (1 to dcConfig.getInt("nHosts")).map (i => createHosts(dcConfig.getConfig("host")))
+    // Create the datacenter within the cloudsim
     val dc = new DatacenterSimple(cloudsim, hostList.toList.asJava)
 
+    // Set DC name and timezones
     dc.setName(dcConfig.getString("name"))
     dc.setTimeZone(dcConfig.getDouble("timezone"))
 
+    // Set VM allocation policy according to the config
     val vmAllocationPolicy = if dcConfig.hasPath("vmAllocationPolicy") then getVmAllocationPolicy(dcConfig.getString("vmAllocationPolicy")) else new VmAllocationPolicySimple()
     dc.setVmAllocationPolicy(vmAllocationPolicy)
 
+    // Set cost characteristics
     dc.getCharacteristics()
       .setCostPerSecond(dcConfig.getDouble("chars.cpuCost"))
       .setCostPerMem(dcConfig.getDouble("chars.ramCost"))
       .setCostPerStorage(dcConfig.getDouble("chars.storCost"))
       .setCostPerBw(dcConfig.getDouble("chars.bwCost"))
 
-    dc.setSchedulingInterval(60)
+    // Tried to see if it has impact in creation of dynamic VMs
+    //dc.setSchedulingInterval(60)
 
     dc
 
@@ -158,6 +166,7 @@ object CloudOrgSim:
    */
   def createHosts(hostConfig: Config): Host =
 
+    // Create host according to the host parameters
     val peMips = hostConfig.getInt("mipsCapacity")/hostConfig.getInt("nPEs")
     val peList = (1 to hostConfig.getInt("nPEs")).map (i => new PeSimple(peMips, new PeProvisionerSimple()))
 
@@ -166,6 +175,8 @@ object CloudOrgSim:
     val storage:Long = hostConfig.getInt("StorageInMBs")
     val ramProvisioner = new ResourceProvisionerSimple()
     val bwProvisioner = new ResourceProvisionerSimple()
+
+    // Get VM scheduler
     val vmScheduler = if hostConfig.hasPath("vmScheduler") then getVmScheduler(hostConfig.getString("vmScheduler")) else new VmSchedulerSpaceShared()
 
     val host = new HostSimple(ram, bw, storage, peList.asJava)
@@ -198,6 +209,8 @@ object CloudOrgSim:
    */
   def getUtilModel(utilModel: String): UtilizationModel ={
      if utilModel == "stochastic" then new UtilizationModelStochastic()
+        // Creating a dynamic utilization model where utilization updates by 10% everytime an update is called for
+        // Based on the example specified in the Cloudsim example implementation
         else if utilModel == "dynamic" then new UtilizationModelDynamic().setUtilizationUpdateFunction(um => um.getUtilization() + um.getTimeSpan()*0.1)
         else UtilizationModelFull()
   }

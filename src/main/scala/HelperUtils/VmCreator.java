@@ -78,7 +78,10 @@ public class VmCreator {
      * @return the created Vm
      */
     private Vm createVm() {
+        // ID for VM
         final int id = vms++;
+
+        // Create new VM according to config parameters
         final CloudletSchedulerAbstract scheduler = vmConf.hasPath("cloudletScheduler")? getCloudletScheduler(vmConf.getString("cloudletScheduler")) : new CloudletSchedulerSpaceShared();
 
         final Vm vm =  new VmSimple(id, vmConf.getInt("mipsCapacity"), vmConf.getInt("PEs"))
@@ -111,10 +114,12 @@ public class VmCreator {
      * @see #createHorizontalVmScaling(Vm)
      */
     private boolean isVmCpuOverloaded(final Vm vm) {
+        // Check predicate if VM CPU utilization is more than 70%
         return vm.getCpuPercentUtilization() > 0.7;
     }
 
     private boolean isVmRamOverloaded(final Vm vm) {
+        // Check predicate if VM RAM utilization is more than 70%
         return vm.getRam().getPercentUtilization() > 0.7;
     }
 
@@ -125,6 +130,7 @@ public class VmCreator {
      * @see #createListOfScalableVms(int)
      */
     private void createHorizontalVmScaling(final Vm vm){
+        // Adding horizontal scaling for VMs that will create a new VM if the criteria mentioned in the overload predicate is met
         final HorizontalVmScaling horizontalScaling = new HorizontalVmScalingSimple();
 
         horizontalScaling

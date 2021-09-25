@@ -15,27 +15,27 @@ class SimulationCheckerTestSuite  extends AnyFlatSpec with Matchers {
   }
 
   it should "contain parameters for all basic components" in {
-    (1 to conf.getInt("nSimulations")).map( i => assert(conf.hasPath("cloudSimulator.simulation"+i+".datacenters")))
-    (1 to conf.getInt("nSimulations")).map(i => assert(conf.hasPath("cloudSimulator.simulation"+i+".vm")))
-    (1 to conf.getInt("nSimulations")).map(i => assert(conf.hasPath("cloudSimulator.simulation"+i+".cloudlet")))
+    (1 to conf.getInt("nSimulations")).map( i => assert(conf.hasPath("simulation"+i+".datacenters")))
+    (1 to conf.getInt("nSimulations")).map(i => assert(conf.hasPath("simulation"+i+".vm")))
+    (1 to conf.getInt("nSimulations")).map(i => assert(conf.hasPath("simulation"+i+".cloudlet")))
   }
 
   it should "have VM mips capacity to be atleast 1000" in {
-    (1 to conf.getInt("nSimulations")).map(i => assert(conf.getInt("cloudSimulator.simulation"+i+".vm.mipsCapacity") >= 1000))
+    (1 to conf.getInt("nSimulations")).map(i => assert(conf.getInt("simulation"+i+".vm.mipsCapacity") >= 1000))
   }
 
   it should "have VM PEs not more than Host PEs" in {
     (1 to conf.getInt("nSimulations")).map(i => assert(
-      conf.getInt("cloudSimulator.simulation"+i+".nVms") * conf.getInt("cloudSimulator.simulation"+i+".vm.PEs") <=
-        (1 to conf.getInt("cloudSimulator.simulation"+i+".datacenters.nDcs")).map(
-          (d => conf.getInt("cloudSimulator.simulation"+i+".datacenters.datacenter"+d+".nHosts") *
-            conf.getInt("cloudSimulator.simulation"+i+".datacenters.datacenter"+d+".host.nPEs")
+      conf.getInt("simulation"+i+".nVms") * conf.getInt("simulation"+i+".vm.PEs") <=
+        (1 to conf.getInt("simulation"+i+".datacenters.nDcs")).map(
+          (d => conf.getInt("simulation"+i+".datacenters.datacenter"+d+".nHosts") *
+            conf.getInt("simulation"+i+".datacenters.datacenter"+d+".host.nPEs")
           )).sum
       )
     )
   }
 
   it should "have atleast one datacenter in each simulation" in {
-    (1 to conf.getInt("nSimulations")).map( i => assert(conf.getInt("cloudSimulator.simulation"+i+".datacenters.nDcs") >= 1))
+    (1 to conf.getInt("nSimulations")).map( i => assert(conf.getInt("simulation"+i+".datacenters.nDcs") >= 1))
   }
 }
