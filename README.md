@@ -59,6 +59,11 @@ These configurations can be modified to run different experiments to decide on t
 specific scenario or for a generic cloud consumer. The framework also provides many more classes and implementations to explore such as - VM migration, autoscaling,
 simulating based on traces from cloud platforms to name a few, to optimize costs.
 
+Few things that can be further explored by extending this example implementation:
+1. Autoscaling of VMs (Horizontal/ Vertical) - impact of that on costs and execution time
+2. Estimating over/under provisioning for different policies
+3. Creating a full fledged network datacenter and how network toplogy affects performance
+
 Further details of simulation results can be found under the [docs](/docs) folder.
 
 #### Running the simulation
