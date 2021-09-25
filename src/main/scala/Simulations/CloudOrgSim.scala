@@ -22,6 +22,8 @@ import java.text.NumberFormat
 import java.util.Locale
 import collection.JavaConverters.*
 import HelperUtils.{CreateLogger, ObtainConfigReference, VmCreator}
+import ch.qos.logback.classic.Level
+
 
 
 class CloudOrgSim
@@ -42,7 +44,7 @@ object CloudOrgSim:
 
     val cloudsim = new CloudSim(0.05)
 
-    Log.setLevel(ch.qos.logback.classic.Level.INFO)
+    Log.setLevel(Level.INFO)
 
     logger.info("Running Simulation: " + simName)
     // Get Config reference for the simulation
