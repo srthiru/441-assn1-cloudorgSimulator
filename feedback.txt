@@ -22,11 +22,11 @@ Grading Criteria:
  - for each used var for heap-based shared variables or mutable collections:
     * none: -0%
  - for each used while or for or other loops with induction variables to iterate over a collection:
-    * 2 for loops: -0.4%
+    * 2 for loops in basic example: -0.2%
  - no instructions in README.md on how to install and run your simulator:
     * instructions present: -0%
  - the program crashes without completing the core functionality:
     * program runs: -0%
  - the documentation exists but it is insufficient to understand your cloud simulation design and models and how you assembled and deployed all components of the cloud:
     * documentation exists, but in orer to understand simulatiuoin need to read source/config: -0.4%
-Total grade: 7.2%
+Total grade: 7.4%
